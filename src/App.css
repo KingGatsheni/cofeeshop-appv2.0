@@ -36,3 +36,18 @@
     transform: rotate(360deg);
   }
 }
+
+
+.products {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  row-gap: '20px';
+  column-gap: '20px';
+}
+.products img {
+  width:100%;
+}
+
+.roduct {
+  padding: '20px'
+}
