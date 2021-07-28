@@ -14,6 +14,7 @@ function App() {
     const [page, setPage] = useState('products')
     let [itemCount, setItemCount] = useState(0)
     let [total, setTotal] = useState(0)
+    let [show,setShow] = useState(false)
 
     var listof10 = [
         'PT’s Coffee: Best dark roast', 'Angels’ Cup: Best Arabica', 'Angels’ Cup: Best Arabica'
@@ -64,16 +65,18 @@ function App() {
 
     const sendOrder = () => {
         api.post('/api/orders',{totalPrice:total,orderStatus:false}).then((res)=>{
-            console.log(res + 'orders added')
+           // console.log(res + 'orders added')
         })
         cart.map((orderItem) => {
             api.get('/api/orders').then((i) => {
-                    api.post('/api/orderitems', {orderId:i.data.orderId +1,productId:orderItem.productId,quantity:cmbValue}).then((data) => {
+                var orId = i.data[i.data.length - 1]
+                    api.post('/api/orderitems', {orderId:orId.orderId+1,productId:orderItem.productId,quantity:cmbValue}).then((data) => {
                         console.log(data.data) 
                 }).catch((err) =>console.log(err))
             })
 
         })
+        setShow(true)
 
     }
 
@@ -158,6 +161,9 @@ function App() {
                                                                     </Row>
                                                                 </Col>
                                                             </Row>
+                                                            <Button variant="secondary" style={{fontFamily: 'fantasy', fontSize:'8px',marginLeft:'700px'}}>
+                                                                update
+                                                            </Button>
                                                             <p style={{ textAlign: 'left', fontSize: '12px', padding: '5px' }} class="card.text">R{product.discription}</p>
                                                             <p style={{ textAlign: 'right', marginRight: '10px' }} variant="secondary" size="md" onClick={() => RemoveFromCart(product)}>Remove</p>
                                                         </div>
@@ -192,6 +198,7 @@ function App() {
                                     <p class="card.text">Reliable Delivery</p>
                                 </div>
                             </div>
+                           {show === true  && cart.length !== 0 ? <p style={{fontFamily: 'fantasy', fontSize: '18.5px', marginRight: '60px', marginTop: '30px', color:'red'}}>Thank You for Shopping @Varsity Coffee Store</p> : ""} 
                         </Col>
                     </Row>
                 </div>
@@ -237,7 +244,7 @@ function App() {
     return (
         <div className="App" style={{ backgroundColor: '#F8F8F8' }}>
             <nav style={{ padding: '10px' }} class="navbar  navbar-expand-lg navbar-dark bg-dark justify-content-between" >
-                <a onClick={() => setPage('products')} style={{ padding: '10px', fontSize: '30px', fontFamily: 'fantasy' }} class="navbar-brand"> DevCoffeeBean(.co.za)</a>
+                <a onClick={() => setPage('products')} style={{ padding: '10px', fontSize: '30px', fontFamily: 'fantasy' }} class="navbar-brand"> VarsityCoffee(.co.za)</a>
                 <h5 onClick={() => setPage('cart')} class="my-2 my-sm-0 btn btn-primary" style={{ color: 'white', padding: '2px', marginRight: '10px' }}><i style={{ padding: '10px', borderRadius: 50 }} class="bi bi-cart"></i>({cart.length})</h5>
             </nav>
 
