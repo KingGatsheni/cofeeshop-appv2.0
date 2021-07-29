@@ -64,20 +64,24 @@ function App() {
     }
 
     const sendOrder = () => {
-        api.post('/api/orders',{totalPrice:total,orderStatus:false}).then((res)=>{
-           // console.log(res + 'orders added')
-        })
-        cart.map((orderItem) => {
-            api.get('/api/orders').then((i) => {
-                var orId = i.data[i.data.length - 1]
-                    api.post('/api/orderitems', {orderId:orId.orderId+1,productId:orderItem.productId,quantity:cmbValue}).then((data) => {
-                        console.log(data.data) 
-                }).catch((err) =>console.log(err))
+        try{
+            api.post('/api/orders',{totalPrice:total,orderStatus:false}).then((res)=>{
             })
+            cart.map((orderItem) => {
+                api.get('/api/orders').then((i) => {
+                    var orId = i.data[i.data.length -1]
+                    console.log(orId)
+                        api.post('/api/orderitems', {orderId:orId.orderId + 1,productId:orderItem.productId,quantity:cmbValue}).then((data) => {
+                            console.log('sucessfully posted orderitem data') 
+                    }).catch((err) =>console.log(err))
+                })
+    
+            })
+            setShow(true)
 
-        })
-        setShow(true)
-
+        }catch(err){
+            console.log(err);
+        }
     }
 
     //RENDER UI COMPONENTS METHODS
@@ -122,7 +126,7 @@ function App() {
                                 cart.map((product) => {
                                     return (
                                         <>
-                                            <div class="card" style={{ width: '950px', padding: '5px', marginLeft: '40px', marginTop: '5px', marginBottom: '15px' }} key={product.productId}>
+                                            <div class="card" style={{ width: '950px', padding: '5px', marginLeft: '40px', marginTop: '20px', marginBottom: '15px' }} key={product.productId}>
                                                 <Row>
                                                     <Col sx lg="2">
                                                         <img style={{ width: '160px', height: '160px', alignContent: 'space-around' }} src={"https://localhost:7001/public/" + product.productImage} alt={product.productName} />
@@ -164,7 +168,7 @@ function App() {
                                                             <Button variant="secondary" style={{fontFamily: 'fantasy', fontSize:'8px',marginLeft:'700px'}}>
                                                                 update
                                                             </Button>
-                                                            <p style={{ textAlign: 'left', fontSize: '12px', padding: '5px' }} class="card.text">R{product.discription}</p>
+                                                            <p style={{ textAlign: 'left', fontSize: '12px', padding: '5px' }} class="card.text">{product.discription}</p>
                                                             <p style={{ textAlign: 'right', marginRight: '10px' }} variant="secondary" size="md" onClick={() => RemoveFromCart(product)}>Remove</p>
                                                         </div>
                                                     </Col>
@@ -175,7 +179,7 @@ function App() {
                                 })}
                         </Col>
                         <Col>
-                            <div class="card" style={{ width: '360px', padding: '20px', marginLeft: '20px' }}>
+                            <div class="card" style={{ width: '360px', padding: '20px', marginLeft: '20px',marginTop: '20px'}}>
 
                                 <div class="card.body">
                                     <h3 style={{ fontFamily: 'fantasy', fontSize: '30px', marginRight: '0px' }} class="card-title"> Cart Summary</h3>
@@ -244,7 +248,7 @@ function App() {
     return (
         <div className="App" style={{ backgroundColor: '#F8F8F8' }}>
             <nav style={{ padding: '10px' }} class="navbar  navbar-expand-lg navbar-dark bg-dark justify-content-between" >
-                <a onClick={() => setPage('products')} style={{ padding: '10px', fontSize: '30px', fontFamily: 'fantasy' }} class="navbar-brand"> VarsityCoffee(.co.za)</a>
+                <a onClick={() => setPage('products')} style={{ padding: '10px', fontSize: '30px', fontFamily: 'fantasy' }} class="navbar-brand"> VarsityCoffee.co.za</a>
                 <h5 onClick={() => setPage('cart')} class="my-2 my-sm-0 btn btn-primary" style={{ color: 'white', padding: '2px', marginRight: '10px' }}><i style={{ padding: '10px', borderRadius: 50 }} class="bi bi-cart"></i>({cart.length})</h5>
             </nav>
 
@@ -253,7 +257,7 @@ function App() {
                     {page !== 'cart' ? renderSearchArea() : ""}
                 </Col>
                 <Col>
-                    {page === 'products' && renderProducts()}I
+                    {page === 'products' && renderProducts()}
                 </Col>
             </Row>
             {page === 'cart' && renderCart()}
