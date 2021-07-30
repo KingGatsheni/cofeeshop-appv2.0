@@ -1,20 +1,17 @@
 import './App.css';
 import React, { useState, useEffect } from 'react'
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { DropdownButton, Dropdown, Button, Col, Row, Container, Image } from 'react-bootstrap'
+import { DropdownButton, Dropdown, Button, Col, Row, Image } from 'react-bootstrap'
 import api from './api/axios';
 import gif from './assets/cart.gif'
 
 function App() {
     //state variables
-    const [cmbValue, setCmbValue] = useState('');
     const [products, setProduct] = useState([])
     const [cart, setCart] = useState([])
     const [search, setSearch] = useState('')
     const [page, setPage] = useState('products')
-    let [itemCount, setItemCount] = useState(0)
-    let [total, setTotal] = useState(0)
-    let [show,setShow] = useState(false)
+    let   [show, setShow] = useState(false)
 
     var listof10 = [
         'PT’s Coffee: Best dark roast', 'Angels’ Cup: Best Arabica', 'Angels’ Cup: Best Arabica'
@@ -24,11 +21,6 @@ function App() {
     ]
 
     /*Methods */
-    const handleSelect = (e) => {
-        setCmbValue(e);
-        console.log(cmbValue)
-    }
-
     const GetAllProducts = () => {
         api.get('/api/products').then((p) => {
             setProduct(p.data);
@@ -46,43 +38,67 @@ function App() {
     }
 
     const AddToCart = (product) => {
-        setCart([...cart, { ...product }])
-        setCmbValue(1)
-        setItemCount(itemCount + 1)
-        api.get(`/api/products/${product.productId}`).then((next) => {
-            console.log(next.data.productPrice)
-            setTotal(total + next.data.productPrice)
-        })
+        let newCart = [...cart]
+        let itemInCart = newCart.find((item) => product.productId === item.productId)
+        if(itemInCart) {
+            itemInCart.quantity ++
+        }else{
+            itemInCart = {
+                ...product,
+                quantity: 1
+            }
+            newCart.push(itemInCart)
+        }
+        setCart(newCart)
     }
     const RemoveFromCart = (productToRemove) => {
         setCart(cart.filter((item) => item !== productToRemove))
-        setItemCount(itemCount - 1)
-        api.get(`/api/products/${productToRemove.productId}`).then((next) => {
-            console.log(next.data.productPrice)
-            setTotal(total - next.data.productPrice)
-        })
     }
 
     const sendOrder = () => {
-        try{
-            api.post('/api/orders',{totalPrice:total,orderStatus:false}).then((res)=>{
+        try {
+            api.post('/api/orders', { totalPrice: getTotalSum(), orderStatus: false }).then((res) => {
             })
             cart.map((orderItem) => {
                 api.get('/api/orders').then((i) => {
-                    var orId = i.data[i.data.length -1]
+                    var orId = i.data[i.data.length - 1]
                     console.log(orId)
-                        api.post('/api/orderitems', {orderId:orId.orderId + 1,productId:orderItem.productId,quantity:cmbValue}).then((data) => {
-                            console.log('sucessfully posted orderitem data') 
-                    }).catch((err) =>console.log(err))
+                    api.post('/api/orderitems', { orderId: orId.orderId + 1, productId: orderItem.productId, quantity: orderItem.quantity }).then((data) => {
+                        console.log('sucessfully posted orderitem data')
+                    }).catch((err) => console.log(err))
                 })
-    
+
             })
             setShow(true)
 
-        }catch(err){
+        } catch (err) {
             console.log(err);
         }
     }
+
+    const getTotalSum = () => {
+        return cart.reduce((sum, { productPrice,quantity }) => sum + productPrice * quantity, 0)
+    }
+
+    const getCartTotal = () => {
+        return cart.reduce((sum, {quantity})=>sum + quantity, 0)
+    }
+
+    const increment = (i)=>{
+      setQuantity(i, i.quantity +1)
+    }
+
+    const decrement = (d) =>{
+       setQuantity(d, d.quantity -1)
+    }
+    const setQuantity = (product, amount) => {
+        let newCart = [...cart]
+        newCart.find((item)=>
+            item.productId === product.productId
+        ).quantity = amount;
+        setCart(newCart)
+    }
+
 
     //RENDER UI COMPONENTS METHODS
     const renderProducts = () => (
@@ -99,12 +115,12 @@ function App() {
                     }).map((product) => {
                         return (
                             <div class="card" style={{ width: '220px', height: '340px', marginBottom: '20px', fontFamily: 'fantasy', fontSize: '18.5px' }} key={product.productId}>
-                                <img style={{ height: '43%', width: '90%' }} src={"https://localhost:7001/public/" + product.productImage} alt={product.productName} />
+                                <img style={{ height: '43%', width: '90%' }} src={"http://localhost:8000/public/" + product.productImage} alt={product.productName} />
                                 <div class="card-body">
                                     <h4 class="card-title">{product.productName}</h4>
                                     <h6 class="card-text">R{product.productPrice}</h6>
                                     <h6 class="card-text"> {product.packSize}</h6>
-                                    <a href="#" style={{ float: 'below' }} class="btn btn-secondary" onClick={() => AddToCart(product)} >
+                                    <a href="#" style={{ float: 'below' }} class="btn btn-secondary" onClick={() => { AddToCart(product) }} >
                                         Add To Cart
                                     </a>
                                 </div>
@@ -125,11 +141,11 @@ function App() {
                             {
                                 cart.map((product) => {
                                     return (
-                                        <>
+                                        <div>
                                             <div class="card" style={{ width: '950px', padding: '5px', marginLeft: '40px', marginTop: '20px', marginBottom: '15px' }} key={product.productId}>
                                                 <Row>
                                                     <Col sx lg="2">
-                                                        <img style={{ width: '160px', height: '160px', alignContent: 'space-around' }} src={"https://localhost:7001/public/" + product.productImage} alt={product.productName} />
+                                                        <img style={{ width: '160px', height: '160px', alignContent: 'space-around' }} src={"http://localhost:8000/public/" + product.productImage} alt={product.productName} />
                                                     </Col>
                                                     <Col>
                                                         <div style={{ fontFamily: 'fantasy', fontSize: '18.5px', flex: 'row' }} class="card.body">
@@ -141,57 +157,49 @@ function App() {
                                                                     <p style={{ textAlign: 'right', fontSize: '28px' }} class="card.text">R{product.productPrice}</p>
                                                                     <Row>
                                                                         <Col>
-                                                                            <p style={{ marginTop: '5px', marginLeft: '270px', fontSize: '22px' }}>[{cmbValue}]</p>
+                                                                        <Button onClick={() => increment(product)} variant="btn btn-primary" style={{ fontFamily: 'fantasy', fontSize: '12px', marginLeft: '700px' }}>
+                                                                                +
+                                                                            </Button>
                                                                         </Col>
                                                                         <Col>
-                                                                            <DropdownButton
-                                                                                variants="secondary"
-                                                                                title=""
-                                                                                id="dropdown-menu-align-right"
-                                                                                style={{ textAlign: 'right', marginRight: '20px' }}
-                                                                                onSelect={handleSelect}>
-                                                                                <Dropdown.Item eventKey="1">1</Dropdown.Item>
-                                                                                <Dropdown.Item eventKey="2">2</Dropdown.Item>
-                                                                                <Dropdown.Item eventKey="3">3</Dropdown.Item>
-                                                                                <Dropdown.Item eventKey="4">4</Dropdown.Item>
-                                                                                <Dropdown.Item eventKey="5">5</Dropdown.Item>
-                                                                                <Dropdown.Item eventKey="1">6</Dropdown.Item>
-                                                                                <Dropdown.Item eventKey="2">7</Dropdown.Item>
-                                                                                <Dropdown.Item eventKey="3">8</Dropdown.Item>
-                                                                                <Dropdown.Item eventKey="4">9</Dropdown.Item>
-                                                                                <Dropdown.Item eventKey="5">10</Dropdown.Item>
-                                                                            </DropdownButton>
+                                                                        <Button variant="secondary" style={{ fontFamily: 'fantasy', fontSize: '14px', marginLeft: '700px',marginTop:'2px' }}>
+                                                                                {product.quantity}
+                                                                            </Button>
                                                                         </Col>
+                                                                        <Col>
+                                                                            <Button onClick={() => decrement(product)} variant="btn btn-primary" style={{ fontFamily: 'fantasy', fontSize: '12px', marginLeft: '700px',marginTop:'2px' }}>
+                                                                                -
+                                                                            </Button>
+                                                                        </Col>
+                                                                       
                                                                     </Row>
                                                                 </Col>
                                                             </Row>
-                                                            <Button variant="secondary" style={{fontFamily: 'fantasy', fontSize:'8px',marginLeft:'700px'}}>
-                                                                update
-                                                            </Button>
+
                                                             <p style={{ textAlign: 'left', fontSize: '12px', padding: '5px' }} class="card.text">{product.discription}</p>
                                                             <p style={{ textAlign: 'right', marginRight: '10px' }} variant="secondary" size="md" onClick={() => RemoveFromCart(product)}>Remove</p>
                                                         </div>
                                                     </Col>
                                                 </Row>
                                             </div>
-                                        </>
+                                        </div>
                                     )
                                 })}
                         </Col>
                         <Col>
-                            <div class="card" style={{ width: '360px', padding: '20px', marginLeft: '20px',marginTop: '20px'}}>
+                            <div class="card" style={{ width: '360px', padding: '20px', marginLeft: '20px', marginTop: '20px' }}>
 
                                 <div class="card.body">
                                     <h3 style={{ fontFamily: 'fantasy', fontSize: '30px', marginRight: '0px' }} class="card-title"> Cart Summary</h3>
                                     <Row sx lg="2">
                                         <Col>
-                                            <p style={{ fontFamily: 'fantasy', fontSize: '18.5px', marginLeft: '50px', marginTop: '50px', textAlign: 'center' }} class="card.text">Total(item {itemCount})</p>
+                                           { <p style={{ fontFamily: 'fantasy', fontSize: '18.5px', marginLeft: '50px', marginTop: '50px', textAlign: 'center' }} class="card.text">Total(item {getCartTotal()})</p>}
                                         </Col>
                                         <Col>
-                                            {total !== 0 ? <p style={{ fontFamily: 'fantasy', fontSize: '18.5px', marginRight: '0px', marginTop: '50px' }} class="card.text"> R{total}</p> : <p style={{ fontFamily: 'fantasy', fontSize: '18.5px', marginRight: '0px', marginTop: '50px' }} class="card.text"> R0,00</p>}
+                                            {getTotalSum() !== 0 ? <p style={{ fontFamily: 'fantasy', fontSize: '18.5px', marginRight: '0px', marginTop: '50px' }} class="card.text"> R{getTotalSum()}</p> : <p style={{ fontFamily: 'fantasy', fontSize: '18.5px', marginRight: '0px', marginTop: '50px' }} class="card.text"> R0,00</p>}
                                         </Col>
                                     </Row>
-                                    <Button onClick={()=> sendOrder()} style={{ alignSelf: 'end' }} variant="btn btn-primary" size="md" >Proceed To CheckOut</Button>
+                                    <Button onClick={() => sendOrder()} style={{ alignSelf: 'end' }} variant="btn btn-primary" size="md" >Proceed To CheckOut</Button>
                                 </div>
                             </div>
                             <div class="card" style={{ width: '360px', padding: '20px', marginLeft: '20px', marginTop: '10px' }}>
@@ -202,7 +210,7 @@ function App() {
                                     <p class="card.text">Reliable Delivery</p>
                                 </div>
                             </div>
-                           {show === true  && cart.length !== 0 ? <p style={{fontFamily: 'fantasy', fontSize: '18.5px', marginRight: '60px', marginTop: '30px', color:'red'}}>Thank You for Shopping @Varsity Coffee Store</p> : ""} 
+                            {show === true && cart.length !== 0 ? <p style={{ fontFamily: 'fantasy', fontSize: '18.5px', marginRight: '60px', marginTop: '30px', color: 'red' }}>Thank You for Shopping @Varsity Coffee Store</p> : ""}
                         </Col>
                     </Row>
                 </div>
@@ -249,7 +257,7 @@ function App() {
         <div className="App" style={{ backgroundColor: '#F8F8F8' }}>
             <nav style={{ padding: '10px' }} class="navbar  navbar-expand-lg navbar-dark bg-dark justify-content-between" >
                 <a onClick={() => setPage('products')} style={{ padding: '10px', fontSize: '30px', fontFamily: 'fantasy' }} class="navbar-brand"> VarsityCoffee.co.za</a>
-                <h5 onClick={() => setPage('cart')} class="my-2 my-sm-0 btn btn-primary" style={{ color: 'white', padding: '2px', marginRight: '10px' }}><i style={{ padding: '10px', borderRadius: 50 }} class="bi bi-cart"></i>({cart.length})</h5>
+                <h5 onClick={() => setPage('cart')} class="my-2 my-sm-0 btn btn-primary" style={{ color: 'white', padding: '2px', marginRight: '10px' }}><i style={{ padding: '10px', borderRadius: 50 }} class="bi bi-cart"></i>({getCartTotal()})</h5>
             </nav>
 
             <Row>
