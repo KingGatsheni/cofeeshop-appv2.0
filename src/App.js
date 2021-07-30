@@ -85,11 +85,13 @@ function App() {
     }
 
     const increment = (i)=>{
-      setQuantity(i, i.quantity +1)
+            setQuantity(i, i.quantity+1)
     }
 
     const decrement = (d) =>{
-       setQuantity(d, d.quantity -1)
+        if(d.quantity != 1){
+            setQuantity(d, d.quantity-1)
+        }
     }
     const setQuantity = (product, amount) => {
         let newCart = [...cart]
@@ -177,7 +179,7 @@ function App() {
                                                             </Row>
 
                                                             <p style={{ textAlign: 'left', fontSize: '12px', padding: '5px' }} class="card.text">{product.discription}</p>
-                                                            <p style={{ textAlign: 'right', marginRight: '10px' }} variant="secondary" size="md" onClick={() => RemoveFromCart(product)}>Remove</p>
+                                                            <button style={{ marginRight: '10px',float: 'right', fontSize:'15.5px'}} variant="secondary"  onClick={() => RemoveFromCart(product)}>Remove</button>
                                                         </div>
                                                     </Col>
                                                 </Row>
