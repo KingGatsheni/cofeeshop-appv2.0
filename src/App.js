@@ -1,9 +1,10 @@
 import './App.css';
 import React, { useState, useEffect } from 'react'
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { DropdownButton, Dropdown, Button, Col, Row, Image, Container,Form } from 'react-bootstrap'
+import { DropdownButton, Dropdown, Button, Col, Row, Image, Container, Form } from 'react-bootstrap'
 import api from './api/axios';
 import gif from './assets/cart.gif'
+import jwtDecode from 'jwt-decode';
 
 function App() {
     //state variables
@@ -12,7 +13,13 @@ function App() {
     const [search, setSearch] = useState('')
     const [page, setPage] = useState('products')
     let [show, setShow] = useState(false)
-    const [logged, setLogged] = useState(false)
+    const [email, setEmail] = useState('')
+    const [password, setPassword] = useState('')
+    const [firstName, setFirstName] = useState('')
+    const [lastName, setLastName] = useState('')
+    const [phone, setPhone] = useState('')
+    const [residence, setResidence] = useState('')
+    const [userState, setUserState] = useState(false)
 
 
     /*Methods */
@@ -26,6 +33,13 @@ function App() {
 
     useEffect(() => {
         GetAllProducts();
+       let token = localStorage.getItem('token')
+       const {exp} = jwtDecode(token)
+       let time = (exp * 1000) - 60000;
+       if(Date.now() < time){
+           setUserState(true)
+       
+    }
     }, [])
 
     if (!products) {
@@ -96,14 +110,59 @@ function App() {
         setCart(newCart)
     }
 
-    const checkLogin = ()=>{
-        if(logged === true){
-            setPage('checkout')
-        }else{
+    const checkLogin = () => {
+        var token = localStorage.getItem('token')
+        const { exp } = jwtDecode(token);
+        const expirationTime = (exp * 1000) - 60000;
+        if (Date.now() >= expirationTime) {
             setPage('login')
+            localStorage.setItem('token', null)
+        } else {
+            setPage('checkout')
         }
+    
     }
 
+    const Signup = () => {
+        if (!password.length < 8) {
+            api.post('account/customers/register', { firstName: firstName, lastName: lastName, email: email, phoneNumber: phone, residence: residence, password: password }).then((res) => {
+                console.log(res.data);
+                setPage('login');
+            }).catch((err) => {
+                console.log(err.message)
+            })
+        }
+
+    }
+
+    const SignIn = () => {
+        api.post('/account/customers/auth', { email: email, password: password }).then((res) => {
+            let token = res.data.token;
+            if (token !== null && cart.length > 0) {
+                setPage('checkout')
+                localStorage.setItem('token', token);
+            } else {
+                setPage('products')
+                localStorage.setItem('token', token);
+            }
+        }).catch((err) => {
+            console.log(err.message);
+        })
+    }
+
+    const parseJwt = (token) => {
+        if (!token) {
+            return
+        }
+        const base64url = token.split('.')[1];
+        const base64 = base64url.replace('-', '+').replace('_', '/');
+        const { sub } = JSON.parse(window.atob(base64))
+        return sub;
+    }
+
+    const logout = ()=>{
+        setUserState(false)
+    }
 
 
     //RENDER UI COMPONENTS METHODS
@@ -168,7 +227,7 @@ function App() {
                                                                 +
                                                             </Button>
 
-                                                            <Button variant="secondary" style={{ fontFamily: 'fantasy', fontSize: '14px', float: 'right',marginLeft: '4px',marginRight: '4px'}}>
+                                                            <Button variant="secondary" style={{ fontFamily: 'fantasy', fontSize: '14px', float: 'right', marginLeft: '4px', marginRight: '4px' }}>
                                                                 {product.quantity}
                                                             </Button>
 
@@ -177,7 +236,7 @@ function App() {
                                                             </Button>
                                                             <p style={{ textAlign: 'left', fontSize: '12px', padding: '5px' }} class="card.text">{product.discription}</p>
 
-                                                            <button style={{ float: 'right', fontSize: '15.5px',marginBottom: '0px' }} variant="secondary" onClick={() => RemoveFromCart(product)}>Remove</button>
+                                                            <button style={{ float: 'right', fontSize: '15.5px', marginBottom: '0px' }} variant="secondary" onClick={() => RemoveFromCart(product)}>Remove</button>
                                                         </div>
                                                     </Col>
                                                 </Row>
@@ -199,7 +258,7 @@ function App() {
                                             {getTotalSum() !== 0 ? <p style={{ fontFamily: 'fantasy', fontSize: '18.5px', marginRight: '0px', marginTop: '50px' }} class="card.text"> R{getTotalSum()}</p> : <p style={{ fontFamily: 'fantasy', fontSize: '18.5px', marginRight: '0px', marginTop: '50px' }} class="card.text"> R0,00</p>}
                                         </Col>
                                     </Row>
-                                   {<Button onClick={() => checkLogin()} style={{ alignSelf: 'end' }} variant="btn btn-primary" size="md" >Proceed To CheckOut</Button>}
+                                    {<Button onClick={() => checkLogin()} style={{ alignSelf: 'end' }} variant="btn btn-primary" size="md" >Proceed To CheckOut</Button>}
                                 </div>
                             </div>
                             <div class="card" style={{ width: '360px', padding: '20px', marginLeft: '20px', marginTop: '10px' }}>
@@ -320,7 +379,7 @@ function App() {
                                     <p style={{ fontFamily: 'fantasy', fontSize: '16.5px', textAlign: 'left' }} class="card.text">Items({getCartTotal()}) </p>
                                 </Col>
                                 <Col>
-                                   <p tyle={{ fontFamily: 'fantasy', fontSize: '16.5px', textAlign: 'left' }}>R{getTotalSum()}</p>
+                                    <p tyle={{ fontFamily: 'fantasy', fontSize: '16.5px', textAlign: 'left' }}>R{getTotalSum()}</p>
                                 </Col>
                             </Row>
                             <p>----------------------------------------------------------------</p>
@@ -350,87 +409,99 @@ function App() {
     )
 
 
-    const renderLogin =()=>(
+    const renderLogin = () => (
         <div className="Login">
-        <Form >
-          <Form.Group size="lg" controlId="email">
-            <Form.Label>Email</Form.Label>
-            <Form.Control
-              autoFocus
-              type="email"
-            />
-          </Form.Group>
-          <Form.Group size="lg" controlId="password">
-            <Form.Label>Password</Form.Label>
-            <Form.Control
-              type="password"  
-            />
-          </Form.Group>
-          <Button onClick={()=> setLogged(true)} style={{width:'200px', margin:'5px'}} block size="lg" type="submit"> 
-            Login
-          </Button> 
-          <p onClick={()=> setPage('register')} style={{fontWeight:'lighter'}}> Sign Up new Account ?</p>
-        </Form>
-      </div>
+            <Form >
+                <Form.Group size="lg" controlId="email">
+                    <Form.Label>Email</Form.Label>
+                    <Form.Control
+                        autoFocus
+                        type="email"
+                        onChange={(e) => {
+                            setEmail(e.target.value);
+                        }}
+                    />
+                </Form.Group>
+                <Form.Group size="lg" controlId="password">
+                    <Form.Label>Password</Form.Label>
+                    <Form.Control
+                        type="password"
+                        onChange={(x) => {
+                            setPassword(x.target.value)
+                        }}
+                    />
+                </Form.Group>
+                <Button onClick={() => SignIn()} style={{ width: '200px', margin: '5px' }} block size="lg" type="submit">
+                    Login
+                </Button>
+                <p onClick={() => setPage('register')} style={{ fontWeight: 'lighter' }}> Sign Up new Account ?</p>
+            </Form>
+        </div>
     )
 
-    const renderRegister =()=> (
-         <div className="Login">
-        <Form >
-          <Form.Group size="lg" controlId="name">
-            <Form.Label>FirstName</Form.Label>
-            <Form.Control
-              autoFocus
-              type="name"
-            />
-          </Form.Group>
-          <Form.Group size="lg" controlId="name">
-            <Form.Label>LastName</Form.Label>
-            <Form.Control
-              autoFocus
-              type="name"
-            />
-          </Form.Group>
-          <Form.Group size="lg" controlId="email">
-            <Form.Label>Email</Form.Label>
-            <Form.Control
-              autoFocus
-              type="email"
-            />
-          </Form.Group>
-          <Form.Group size="lg" controlId="name">
-            <Form.Label>Phone Number</Form.Label>
-            <Form.Control
-              autoFocus
-              type="name"
-            />
-          </Form.Group>
-          <Form.Group size="lg" controlId="name">
-            <Form.Label>Res Block and room number</Form.Label>
-            <Form.Control
-              autoFocus
-              type="name"
-            />
-          </Form.Group>
-          <Form.Group size="lg" controlId="password">
-            <Form.Label>Password</Form.Label>
-            <Form.Control
-              type="password"  
-            />
-          </Form.Group>
-          <Button  style={{width:'200px', margin:'5px'}} block size="lg" type="submit"> 
-            Sign Up
-          </Button> 
-        </Form>
-      </div>
+    const renderRegister = () => (
+        <div className="Login">
+            <Form >
+                <Form.Group size="lg" controlId="name">
+                    <Form.Label>FirstName</Form.Label>
+                    <Form.Control
+                        autoFocus
+                        type="name"
+                        onChange={(e) => setFirstName(e.target.value)}
+                    />
+                </Form.Group>
+                <Form.Group size="lg" controlId="name">
+                    <Form.Label>LastName</Form.Label>
+                    <Form.Control
+                        autoFocus
+                        type="name"
+                        onChange={(e) => setLastName(e.target.value)}
+                    />
+                </Form.Group>
+                <Form.Group size="lg" controlId="email">
+                    <Form.Label>Email</Form.Label>
+                    <Form.Control
+                        autoFocus
+                        type="email"
+                        onChange={(e) => setEmail(e.target.value)}
+                    />
+                </Form.Group>
+                <Form.Group size="lg" controlId="name">
+                    <Form.Label>Phone Number</Form.Label>
+                    <Form.Control
+                        autoFocus
+                        type="name"
+                        onChange={(e) => setPhone(e.target.value)}
+                    />
+                </Form.Group>
+                <Form.Group size="lg" controlId="name">
+                    <Form.Label>Res Block and room number</Form.Label>
+                    <Form.Control
+                        autoFocus
+                        type="name"
+                        onChange={(e) => setResidence(e.target.value)}
+                    />
+                </Form.Group>
+                <Form.Group size="lg" controlId="password">
+                    <Form.Label>Password</Form.Label>
+                    <Form.Control
+                        type="password"
+                        onChange={(e) => setPassword(e.target.value)}
+                    />
+                </Form.Group>
+                <Button onClick={() => Signup()} style={{ width: '200px', margin: '5px' }} block size="lg" type="submit">
+                    Sign Up
+                </Button>
+            </Form>
+        </div>
     )
-    const renderAccount =()=> (
-        <div style={{ fontFamily: 'fantasy',marginTop:'60px'}}>
+    const renderAccount = () => (
+        <div style={{ fontFamily: 'fantasy', marginTop: '60px' }}>
             <p>Feature Comming Soon...</p>
         </div>
     )
 
-    const renderFooter =()=> (
+    const renderFooter = () => (
         <div></div>
     )
 
@@ -438,11 +509,11 @@ function App() {
     return (
         <div className="App">
             <nav class="navbar  navbar-header navbar-light bg-light justify-content-end" >
-                <a onClick={() => setPage('products')} style={{marginRight:'750px', fontSize: '30px', fontFamily: 'fantasy' }} class="navbar-brand"> VarsityCoffee.co.za</a>
-
-                <a onClick={()=> setPage('login')} style={{float: 'right',  fontFamily: 'fantasy',marginRight:'10px' }} href="#">Sign In</a>
-                <a onClick={()=> setPage('register')} style={{float: 'right',  fontFamily: 'fantasy',marginRight:'10px' }}href="#"> |  Sign Up</a>
-                <a  onClick={()=> setPage('account')} style={{float: 'right',  fontFamily: 'fantasy',marginRight:'40px' }}href="#">|   My Account</a>
+                <a onClick={() => setPage('products')} style={{ marginRight: '750px', fontSize: '30px', fontFamily: 'fantasy' }} class="navbar-brand"> VarsityCoffee.co.za</a>
+               {userState === true && (<a onClick={() => logout()} style={{ float: 'right', fontFamily: 'fantasy', marginRight: '10px' }} href="#">logout</a>) }
+                 {userState ===false &&   <a onClick={() => setPage('login')} style={{ float: 'right', fontFamily: 'fantasy', marginRight: '10px' }} href="#">Sign In</a>}
+               {userState === false && <a onClick={() => setPage('register')} style={{ float: 'right', fontFamily: 'fantasy', marginRight: '10px' }} href="#"> |  Sign Up</a>}
+                <a onClick={() => setPage('account')} style={{ float: 'right', fontFamily: 'fantasy', marginRight: '40px' }} href="#">|   My Account</a>
                 <div style={{
                     position: 'absolute', height: 25, width: 25, borderRadius: 15, backgroundColor: 'rgba(95,197,123,0.8)', right: 15, top: 15, alignItems: 'center', justifyContent: 'center', zIndex: 2000
                 }} onClick={() => setPage('cart')}>
