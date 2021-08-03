@@ -1,10 +1,11 @@
 import './App.css';
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { DropdownButton, Dropdown, Button, Col, Row, Image, Container, Form } from 'react-bootstrap'
+import { Dropdown, Button, Col, Row, Image, Container, Form } from 'react-bootstrap'
 import api from './api/axios';
 import gif from './assets/cart.gif'
 import jwtDecode from 'jwt-decode';
+
 
 function App() {
     //state variables
@@ -12,7 +13,7 @@ function App() {
     const [cart, setCart] = useState([])
     const [search, setSearch] = useState('')
     const [page, setPage] = useState('products')
-    let [show, setShow] = useState(false)
+    const [show, setShow] = useState(false)
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [firstName, setFirstName] = useState('')
@@ -20,8 +21,10 @@ function App() {
     const [phone, setPhone] = useState('')
     const [residence, setResidence] = useState('')
     const [userState, setUserState] = useState(false)
+    const [user, setUser] = useState({})
+    const [checkoutState, setCheckoutState] = useState(false)
 
-
+    const paypal = useRef()
     /*Methods */
     const GetAllProducts = () => {
         api.get('/api/products').then((p) => {
@@ -33,14 +36,50 @@ function App() {
 
     useEffect(() => {
         GetAllProducts();
-       let token = localStorage.getItem('token')
-       const {exp} = jwtDecode(token)
-       let time = (exp * 1000) - 60000;
-       if(Date.now() < time){
-           setUserState(true)
-       
-    }
-    }, [])
+        let token = localStorage.getItem('token')
+        try {
+            if (token !== undefined) {
+                const { exp } = jwtDecode(token)
+                let time = (exp * 1000) - 60000;
+                if (Date.now() < time) {
+                    setUserState(true)
+                }
+            } else {
+                console.log("token does not exist")
+            }
+        } catch (e) {
+            console.log(e.message)
+        }
+
+        var price = getTotalSum() /14.40
+        var p = price.toFixed(2)
+        console.log(p)
+        window.paypal.Buttons({
+            createOrder: (data, actions, err) => {
+                return actions.order.create({
+                    intent: "CAPTURE",
+                    purchase_units: [
+                        {
+                            description: "coffeeshop order",
+                            amount: {
+                                currency_code: "USD",
+                                value:p
+                            }
+
+                        }
+                    ]
+                })
+            },
+            onApprove: async (data, actions) => {
+                const order = await actions.order.capture();
+                console.log(order);
+                sendOrder();
+                setPage('cart')
+                setCart([])
+            },
+            onError: (err) => { console.log(err.message) }
+        }).render(paypal.current)
+    },[])
 
     if (!products) {
         return null;
@@ -65,8 +104,9 @@ function App() {
     }
 
     const sendOrder = () => {
+        let jwt = localStorage.getItem('token')
         try {
-            api.post('/api/orders', { totalPrice: getTotalSum(), orderStatus: false }).then((res) => {
+            api.post('/api/orders', { totalPrice: getTotalSum(), orderStatus: false, customerId: user.userId }).then((res) => {
             })
             cart.map((orderItem) => {
                 api.get('/api/orders').then((i) => {
@@ -112,21 +152,31 @@ function App() {
 
     const checkLogin = () => {
         var token = localStorage.getItem('token')
-        const { exp } = jwtDecode(token);
-        const expirationTime = (exp * 1000) - 60000;
-        if (Date.now() >= expirationTime) {
+        try {
+            if (token !== undefined) {
+                const { exp } = jwtDecode(token);
+                const expirationTime = (exp * 1000) - 60000;
+                if (Date.now() >= expirationTime) {
+                    setPage('login')
+                } else {
+                    setPage('checkout')
+                    CurrentUser();
+                }
+            } else {
+                console.log('Invalid token')
+            }
+        } catch (e) {
+            console.log(e.message)
             setPage('login')
-            localStorage.setItem('token', null)
-        } else {
-            setPage('checkout')
         }
-    
+
+
+
     }
 
     const Signup = () => {
         if (!password.length < 8) {
             api.post('account/customers/register', { firstName: firstName, lastName: lastName, email: email, phoneNumber: phone, residence: residence, password: password }).then((res) => {
-                console.log(res.data);
                 setPage('login');
             }).catch((err) => {
                 console.log(err.message)
@@ -140,10 +190,15 @@ function App() {
             let token = res.data.token;
             if (token !== null && cart.length > 0) {
                 setPage('checkout')
+                localStorage.clear()
                 localStorage.setItem('token', token);
+                setUserState(true)
+                CurrentUser();
             } else {
                 setPage('products')
+                localStorage.clear()
                 localStorage.setItem('token', token);
+                setUserState(true)
             }
         }).catch((err) => {
             console.log(err.message);
@@ -160,8 +215,23 @@ function App() {
         return sub;
     }
 
-    const logout = ()=>{
+    const logout = () => {
         setUserState(false)
+        localStorage.clear()
+        setPage('products')
+    }
+
+    const CurrentUser = () => {
+        let token = localStorage.getItem('token')
+        let data = parseJwt(token)
+        let currentUser = {
+            "userId": data[0],
+            "fullName": data[1] + " " + data[2],
+            "email": data[3],
+            "phone": data[4],
+            "res": data[5]
+        }
+        setUser(currentUser)
     }
 
 
@@ -345,10 +415,11 @@ function App() {
                                         <div style={{ padding: '10px', backgroundColor: '#DBF3FA' }} class="card">
                                             <Row>
                                                 <Col>
-                                                    <p style={{ textAlign: 'left', fontSize: '16px' }}>Sihle Ndlovu</p>
-                                                    <p style={{ textAlign: 'left', fontSize: '14px' }}>489181 Eskebheni Area</p>
-                                                    <p style={{ textAlign: 'left', fontSize: '14px' }}>Inanda, Durban, 4309</p>
-                                                    <p style={{ textAlign: 'left', fontSize: '12px' }}>0687895644</p>
+
+                                                    <p style={{ textAlign: 'left', fontSize: '16px' }}>{user.fullName}</p>
+                                                    <p style={{ textAlign: 'left', fontSize: '14px' }}>{user.email}</p>
+                                                    <p style={{ textAlign: 'left', fontSize: '14px' }}>{user.res}</p>
+                                                    <p style={{ textAlign: 'left', fontSize: '12px' }}>{user.phone}</p>
                                                 </Col>
                                                 <Col sx lg="2">
                                                     <Row >
@@ -391,8 +462,8 @@ function App() {
                                     <p style={{ fontFamily: 'fantasy', fontSize: '24.5px', color: 'green' }}>R{getTotalSum()}</p>
                                 </Col>
                             </Row>
+                            {checkoutState ? renderPay() : <Button onClick={() => setCheckoutState(true)} variant="btn btn-primary" size="md" >Pay Now</Button>}
 
-                            <Button variant="btn btn-primary" size="md" >Continue</Button>
                         </div>
                     </div>
                     <div class="card" style={{ width: '360px', padding: '20px', marginLeft: '20px', marginTop: '10px' }}>
@@ -505,14 +576,21 @@ function App() {
         <div></div>
     )
 
+    const renderPay = () => (
+        <div className="App">
+            <div style={{width: '340px', padding: '0px'}} ref={paypal}></div>
+            <p></p>
+        </div>
+    )
+
     //Interface
     return (
         <div className="App">
             <nav class="navbar  navbar-header navbar-light bg-light justify-content-end" >
                 <a onClick={() => setPage('products')} style={{ marginRight: '750px', fontSize: '30px', fontFamily: 'fantasy' }} class="navbar-brand"> VarsityCoffee.co.za</a>
-               {userState === true && (<a onClick={() => logout()} style={{ float: 'right', fontFamily: 'fantasy', marginRight: '10px' }} href="#">logout</a>) }
-                 {userState ===false &&   <a onClick={() => setPage('login')} style={{ float: 'right', fontFamily: 'fantasy', marginRight: '10px' }} href="#">Sign In</a>}
-               {userState === false && <a onClick={() => setPage('register')} style={{ float: 'right', fontFamily: 'fantasy', marginRight: '10px' }} href="#"> |  Sign Up</a>}
+                {userState === true && (<a onClick={() => logout()} style={{ float: 'right', fontFamily: 'fantasy', marginRight: '10px' }} href="#">logout</a>)}
+                {userState === false && <a onClick={() => setPage('login')} style={{ float: 'right', fontFamily: 'fantasy', marginRight: '10px' }} href="#">Sign In</a>}
+                {userState === false && <a onClick={() => setPage('register')} style={{ float: 'right', fontFamily: 'fantasy', marginRight: '10px' }} href="#"> |  Sign Up</a>}
                 <a onClick={() => setPage('account')} style={{ float: 'right', fontFamily: 'fantasy', marginRight: '40px' }} href="#">|   My Account</a>
                 <div style={{
                     position: 'absolute', height: 25, width: 25, borderRadius: 15, backgroundColor: 'rgba(95,197,123,0.8)', right: 15, top: 15, alignItems: 'center', justifyContent: 'center', zIndex: 2000
@@ -529,7 +607,7 @@ function App() {
             {page === 'checkout' && renderCheckout()}
             {page === 'login' && renderLogin()}
             {page === 'register' && renderRegister()}
-            {page === 'account' && renderAccount()}
+            {page === 'account' && renderAccount()} 
         </div >
     );
 }
