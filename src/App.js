@@ -13,7 +13,6 @@ function App() {
     const [cart, setCart] = useState([])
     const [search, setSearch] = useState('')
     const [page, setPage] = useState('products')
-    const [show, setShow] = useState(false)
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [firstName, setFirstName] = useState('')
@@ -79,7 +78,7 @@ function App() {
             },
             onError: (err) => { console.log(err.message) }
         }).render(paypal.current)
-    },[])
+    },[,checkoutState])
 
     if (!products) {
         return null;
@@ -105,20 +104,22 @@ function App() {
 
     const sendOrder = () => {
         let jwt = localStorage.getItem('token')
+        let headers = {
+            'Authorization': `Bearer ${jwt}`}
+        console.log(headers)
         try {
-            api.post('/api/orders', { totalPrice: getTotalSum(), orderStatus: false, customerId: user.userId }).then((res) => {
+            api.post('/api/orders', { totalPrice: getTotalSum(), orderStatus: false, customerId: user.userId },{headers: headers}).then((res) => {
             })
             cart.map((orderItem) => {
-                api.get('/api/orders').then((i) => {
+                api.get('/api/orders', {headers:headers}).then((i) => {
                     var orId = i.data[i.data.length - 1]
                     console.log(orId)
-                    api.post('/api/orderitems', { orderId: orId.orderId + 1, productId: orderItem.productId, quantity: orderItem.quantity }).then((data) => {
+                    api.post('/api/orderitems', { orderId: orId.orderId + 1, productId: orderItem.productId, quantity: orderItem.quantity }, {headers:headers}).then((data) => {
                         console.log('sucessfully posted orderitem data')
                     }).catch((err) => console.log(err))
                 })
 
             })
-            setShow(true)
 
         } catch (err) {
             console.log(err);
@@ -339,7 +340,6 @@ function App() {
                                     <p class="card.text">Reliable Delivery</p>
                                 </div>
                             </div>
-                            {show === true && cart.length !== 0 ? <p style={{ fontFamily: 'fantasy', fontSize: '18.5px', marginRight: '60px', marginTop: '30px', color: 'red' }}>Thank You for Shopping @Varsity Coffee Store</p> : ""}
                         </Col>
                     </Row>
                 </div>
@@ -479,7 +479,6 @@ function App() {
         </div>
     )
 
-
     const renderLogin = () => (
         <div className="Login">
             <Form >
@@ -579,7 +578,6 @@ function App() {
     const renderPay = () => (
         <div className="App">
             <div style={{width: '340px', padding: '0px'}} ref={paypal}></div>
-            <p></p>
         </div>
     )
 
