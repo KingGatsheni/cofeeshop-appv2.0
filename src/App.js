@@ -5,6 +5,7 @@ import { Dropdown, Button, Col, Row, Image, Container, Form } from 'react-bootst
 import api from './api/axios';
 import gif from './assets/cart.gif'
 import jwtDecode from 'jwt-decode';
+import axios from 'axios'
 
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
     const [userState, setUserState] = useState(false)
     const [user, setUser] = useState({})
     const [checkoutState, setCheckoutState] = useState(false)
+    const[zar, setZar] = useState(0)
 
     const paypal = useRef()
     /*Methods */
@@ -33,6 +35,14 @@ function App() {
         })
     }
 
+    const returnZar =()=>{
+        axios('https://openexchangerates.org/api/latest.json?app_id=67a771b0d19d48148a2f2447be52bc7e&base=USD&symbols=ZAR')
+        .then((rate) =>{
+        let currency = (rate.data.rates.ZAR)
+         setZar(currency)
+         console.log(zar)
+        }).catch((err) =>console.log(err))
+    }
     useEffect(() => {
         GetAllProducts();
         let token = localStorage.getItem('token')
@@ -50,9 +60,8 @@ function App() {
             console.log(e.message)
         }
 
-        var price = getTotalSum() /14.40
+        var price = getTotalSum() / zar
         var p = price.toFixed(2)
-        console.log(p)
         window.paypal.Buttons({
             createOrder: (data, actions, err) => {
                 return actions.order.create({
@@ -62,7 +71,7 @@ function App() {
                             description: "coffeeshop order",
                             amount: {
                                 currency_code: "USD",
-                                value:p
+                                value: p
                             }
 
                         }
@@ -75,10 +84,12 @@ function App() {
                 sendOrder();
                 setPage('cart')
                 setCart([])
+                setCheckoutState(false);
             },
             onError: (err) => { console.log(err.message) }
         }).render(paypal.current)
-    },[,checkoutState])
+        returnZar()
+    }, [, checkoutState])
 
     if (!products) {
         return null;
@@ -105,16 +116,18 @@ function App() {
     const sendOrder = () => {
         let jwt = localStorage.getItem('token')
         let headers = {
-            'Authorization': `Bearer ${jwt}`}
+            'Authorization': `Bearer ${jwt}`,
+            'Access-Control-Allow-Origin': '*'
+        }
         console.log(headers)
         try {
-            api.post('/api/orders', { totalPrice: getTotalSum(), orderStatus: false, customerId: user.userId },{headers: headers}).then((res) => {
+            api.post('/api/orders', { totalPrice: getTotalSum(), orderStatus: false, customerId: user.userId }, { headers: headers }).then((res) => {
             })
             cart.map((orderItem) => {
-                api.get('/api/orders', {headers:headers}).then((i) => {
+                api.get('/api/orders', { headers: headers }).then((i) => {
                     var orId = i.data[i.data.length - 1]
                     console.log(orId)
-                    api.post('/api/orderitems', { orderId: orId.orderId + 1, productId: orderItem.productId, quantity: orderItem.quantity }, {headers:headers}).then((data) => {
+                    api.post('/api/orderitems', { orderId: orId.orderId + 1, productId: orderItem.productId, quantity: orderItem.quantity }, { headers: headers }).then((data) => {
                         console.log('sucessfully posted orderitem data')
                     }).catch((err) => console.log(err))
                 })
@@ -234,7 +247,6 @@ function App() {
         }
         setUser(currentUser)
     }
-
 
     //RENDER UI COMPONENTS METHODS
     const renderProducts = () => (
@@ -577,7 +589,7 @@ function App() {
 
     const renderPay = () => (
         <div className="App">
-            <div style={{width: '340px', padding: '0px'}} ref={paypal}></div>
+            <div style={{ width: '340px', padding: '0px' }} ref={paypal}></div>
         </div>
     )
 
@@ -585,14 +597,20 @@ function App() {
     return (
         <div className="App">
             <nav class="navbar  navbar-header navbar-light bg-light justify-content-end" >
-                <a onClick={() => setPage('products')} style={{ marginRight: '750px', fontSize: '30px', fontFamily: 'fantasy' }} class="navbar-brand"> VarsityCoffee.co.za</a>
+                <a onClick={() =>{ 
+                     setPage('products')
+                     setCheckoutState(false)
+                }} style={{ marginRight: '750px', fontSize: '30px', fontFamily: 'fantasy' }} class="navbar-brand"> VarsityCoffee.co.za</a>
                 {userState === true && (<a onClick={() => logout()} style={{ float: 'right', fontFamily: 'fantasy', marginRight: '10px' }} href="#">logout</a>)}
                 {userState === false && <a onClick={() => setPage('login')} style={{ float: 'right', fontFamily: 'fantasy', marginRight: '10px' }} href="#">Sign In</a>}
                 {userState === false && <a onClick={() => setPage('register')} style={{ float: 'right', fontFamily: 'fantasy', marginRight: '10px' }} href="#"> |  Sign Up</a>}
                 <a onClick={() => setPage('account')} style={{ float: 'right', fontFamily: 'fantasy', marginRight: '40px' }} href="#">|   My Account</a>
                 <div style={{
                     position: 'absolute', height: 25, width: 25, borderRadius: 15, backgroundColor: 'rgba(95,197,123,0.8)', right: 15, top: 15, alignItems: 'center', justifyContent: 'center', zIndex: 2000
-                }} onClick={() => setPage('cart')}>
+                }} onClick={() => {
+                    setPage('cart')
+                    setCheckoutState(false)
+                }}>
                     <p style={{ color: 'white', fontWeight: 'bold' }}>{getCartTotal()}</p>
                 </div>
                 <i style={{ paddingRight: '50px', borderRadius: 50 }} class="bi bi-cart"></i>
@@ -605,7 +623,7 @@ function App() {
             {page === 'checkout' && renderCheckout()}
             {page === 'login' && renderLogin()}
             {page === 'register' && renderRegister()}
-            {page === 'account' && renderAccount()} 
+            {page === 'account' && userState === true ? renderAccount() : ""}
         </div >
     );
 }
